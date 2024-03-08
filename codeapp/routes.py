@@ -14,7 +14,7 @@ from matplotlib.figure import Figure
 from werkzeug.wrappers.response import Response as WerkzeugResponse
 
 # internal imports
-import codeapp.models as models
+from codeapp.models import Movies
 from codeapp.utils import calculate_statistics, get_data_list, prepare_figure
 
 # define the response type
@@ -28,17 +28,22 @@ bp = Blueprint("bp", __name__, url_prefix="/")
 
 @bp.get("/")  # root route
 def home() -> Response:
-    # TODO
-    pass
+    dataset: list[Movies] = get_data_list()
+    counter: dict[int | str, float] = calculate_statistics(dataset)
+    return render_template("home.html", counter=counter)
 
 
 @bp.get("/image")
 def image() -> Response:
-    # creating the plot
+    dataset: list[Movies] = get_data_list()
+
+    counter: dict[int | str, float] = calculate_statistics(dataset)
+
     fig = Figure()
-
-    # TODO: populate the plot
-
+    fig.gca().bar(list(counter.keys()), list(counter.values()), color="pink")
+    fig.gca().set_xlabel("Year")
+    fig.gca().set_ylabel("Average score of Science fiction movies")
+    fig.gca().set_title("Average score of Science fiction movies per year")
     ################ START -  THIS PART MUST NOT BE CHANGED BY STUDENTS ################
     # create a string buffer to hold the final code for the plot
     output = io.StringIO()
@@ -58,11 +63,14 @@ def about() -> Response:
 
 @bp.get("/json-dataset")
 def get_json_dataset() -> Response:
-    # TODO
-    pass
+    dataset: list[Movies] = get_data_list()
+    return jsonify(dataset)
 
 
 @bp.get("/json-stats")
 def get_json_stats() -> Response:
-    # TODO
-    pass
+    dataset: list[Movies] = get_data_list()
+
+    counter: dict[int | str, float] = calculate_statistics(dataset)
+
+    return jsonify(counter)

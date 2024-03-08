@@ -2,9 +2,25 @@
 {% block content %}
 <h1 id="homepage_header">Final project</h1>
 
-<!-- TODO -->
-<h2>Insert your table here!</h2>
+<table class="table table-bordered table-hover"> 
+    <thead> 
+        <tr> 
+            <th>Year</th> 
+            <th>Averege score</th> 
+        </tr> 
+    </thead> 
+    <tbody> 
+        {% for year, avg_sifi_year in counter.items()|sort(attribute='0') %} 
+            <tr> 
+                <td>{{ year }}</td> 
+                <td>{{ avg_sifi_year }}</td> 
+            </tr> 
+        {% endfor %} 
+    </tbody> 
+</table>
+
 
 <img src="{{ url_for('bp.image') }}" class="rounded mx-auto d-block" alt="Plot with analysis">
+
 
 {% endblock content %}
