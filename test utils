@@ -1,0 +1,118 @@
+def calculate_statistics(dataset: list[Movies]) -> dict[int | str, float]: 
+
+
+    score_ranges = {f"{i}-{i+1}": 0 for i in range(10)}
+
+    for movies in dataset: 
+        try: 
+            score = float(movies.score) 
+        except ValueError: 
+            print(f"Invalid score: {movies.score}. Skipping movie {movies.title}.") 
+            continue 
+
+        if 0 <= score < 1: 
+            score_ranges["0-1"] += 1 
+        elif 1 <= score < 2: 
+            score_ranges["1-2"] += 1 
+        elif 2 <= score < 3: 
+            score_ranges["2-3"] += 1 
+        elif 3 <= score < 4: 
+            score_ranges["3-4"] += 1 
+        elif 4 <= score < 5: 
+            score_ranges["4-5"] += 1 
+        elif 5 <= score < 6: 
+            score_ranges["5-6"] += 1 
+        elif 6 <= score < 7: 
+            score_ranges["6-7"] += 1 
+        elif 7 <= score < 8: 
+            score_ranges["7-8"] += 1 
+        elif 8 <= score < 9: 
+            score_ranges["8-9"] += 1 
+        elif 9 <= score <= 10: 
+            score_ranges["9-10"] += 1 
+
+    
+
+    total_movies = sum(score_ranges.values()) 
+
+    
+    average_scores = {} 
+    for range_name, count in score_ranges.items(): 
+        average_scores[range_name] = count / total_movies 
+
+
+    return average_scores
+
+
+movies = Movies(
+            id=uuid.uuid4().hex,
+            title=row["title"],
+            genres=row["genres"],
+            runtime=row["runtime"],
+            release_date=row["release_date"],
+            budget=row["budget"],
+            score=row["score"],
+        )
+
+
+
+
+def get_data_list() -> list[Movies]:
+    if db.exists("dataset_list") > 0:
+        current_app.logger.info("Dataset already downloaded.")
+        dataset_stored: list[Movies] = []
+        raw_dataset: list[bytes] = db.lrange("dataset_list", 0, -1)
+        for item in raw_dataset:
+            dataset_stored.append(pickle.loads(item))
+        return dataset_stored
+
+    url = "https://onu1.s2.chalmers.se/datasets/tmdb_5000_movies.csv"
+    response = requests.get(url, timeout=20)
+    if response.status_code == 200:
+        with open("movies.csv", "wb") as file:
+            file.write(response.content)
+        print("Download success")
+    else:
+        pass
+
+    with open("movies.csv", newline="", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        data: list[dict[str, str]] = list(reader)
+        dataset_base: list[Movies] = []
+        for row in data:
+            movies = Movies(
+                id=uuid.uuid4().hex,
+                title=row["title"],
+                genres=row["genres"],
+                runtime=row["runtime"],
+                release_date=row["release_date"],
+                budget=row["budget"],
+                score=row["score"],
+            )
+            db.rpush("dataset_list", pickle.dumps(movies))
+            dataset_base.append(movies)
+
+    return dataset_base
+
+
+def calculate_statistics(dataset: list[Movies]) -> dict[int | str, float]:
+
+    """
+    Receives the dataset in the form of a list of Python objects, and calculates the
+    statistics necessary.
+    """
+    years: dict[str, float] = {}
+
+    for i in dataset:
+        if "Science Fiction" in i.genres:
+            release_date = datetime.strptime(i.release_date, "%Y-%m-%d").date()
+            years.setdefault(release_date, []).append(float(i.score))
+
+    score_average = {}
+
+    for key, values in years.items():
+        key_sum = sum(values)
+        score_average[key.year] = key_sum / len(values)
+
+    return score_average
+

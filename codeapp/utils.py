@@ -16,6 +16,7 @@ from codeapp.models import Movies
 
 
 def get_data_list() -> list[Movies]:
+
     if db.exists("dataset_list") > 0:
         current_app.logger.info("Dataset already downloaded.")
         dataset_stored: list[Movies] = []
@@ -38,15 +39,22 @@ def get_data_list() -> list[Movies]:
         data: list[dict[str, str]] = list(reader)
         dataset_base: list[Movies] = []
         for row in data:
+            try:
+                runtime = int(row["runtime"])
+                score = float(row["score"])
+            except ValueError:
+                print(f"Invalid score: {row['score']}. Skipping movie {row['title']}.")
+                continue
             movies = Movies(
-                id=uuid.uuid4().hex,
+                id=int(uuid.uuid4().hex, 16),
                 title=row["title"],
-                genres=row["genres"],
-                runtime=row["runtime"],
-                release_date=row["release_date"],
-                budget=row["budget"],
-                score=row["score"],
+                genres=row["genres"].split(","),
+                runtime=runtime,
+                release_date=datetime.strptime(row["release_date"], "%Y-%m-%d"),
+                budget=int(row["budget"]),
+                score=score,
             )
+
             db.rpush("dataset_list", pickle.dumps(movies))
             dataset_base.append(movies)
 
@@ -54,19 +62,15 @@ def get_data_list() -> list[Movies]:
 
 
 def calculate_statistics(dataset: list[Movies]) -> dict[int | str, float]:
-
-    """
-    Receives the dataset in the form of a list of Python objects, and calculates the
-    statistics necessary.
-    """
-    years: dict[str, float] = {}
+    years: dict[datetime, list[float]] = {}
 
     for i in dataset:
         if "Science Fiction" in i.genres:
-            release_date = datetime.strptime(i.release_date, "%Y-%m-%d").date()
-            years.setdefault(release_date, []).append(float(i.score))
+            release_date = i.release_date
+            release_datetime = datetime.combine(release_date, datetime.min.time())
+            years.setdefault(release_datetime, []).append(float(i.score))
 
-    score_average = {}
+    score_average: dict[int | str, float] = {}
 
     for key, values in years.items():
         key_sum = sum(values)
